@@ -49,6 +49,49 @@ const getIssuesCollectionRef = (db) =>
 
 
 // =================================================================
+// -------------------- FIREBASE UTILITY API (Caretaker Logic) -----------------
+// =================================================================
+
+/**
+ * Updates the status of an issue document.
+ * @param {Firestore} db 
+ * @param {string} issueId 
+ * @param {string} newStatus 
+ */
+const updateIssueStatus = async (db, issueId, newStatus) => {
+    try {
+        const issueRef = doc(getIssuesCollectionRef(db), issueId);
+        await updateDoc(issueRef, { status: newStatus });
+    } catch (e) {
+        console.error("Error updating issue status:", e);
+        throw new Error("Failed to update status.");
+    }
+};
+
+/**
+ * Approves a pending user's access and assigns their permanent room details.
+ * @param {Firestore} db 
+ * @param {object} user 
+ */
+const approveUserAccess = async (db, user) => {
+    try {
+        const profileDocRef = getUserProfileDoc(db, user.userId);
+        await updateDoc(profileDocRef, {
+            role: 'user', 
+            block: user.tempBlock,
+            roomNumber: user.tempRoom,
+            verifiedAt: serverTimestamp(),
+            tempBlock: null, 
+            tempRoom: null, 
+        });
+    } catch (e) {
+        console.error("Verification error:", e);
+        throw new Error("Failed to verify user.");
+    }
+};
+
+
+// =================================================================
 // -------------------- CORE COMPONENTS -----------------
 // =================================================================
 
@@ -145,11 +188,10 @@ const CaretakerDashboard = ({ db, appId, filterBlock, filterUrgent }) => {
 
   const updateStatus = useCallback(async (issueId, newStatus) => {
     try {
-      const issueRef = doc(getIssuesCollectionRef(db), issueId);
-      await updateDoc(issueRef, { status: newStatus });
+      // Calls the centralized API function
+      await updateIssueStatus(db, issueId, newStatus);
     } catch (e) {
       console.error("Error updating issue status:", e);
-      // Simple visual feedback for the user
       alert("Failed to update status. Check console."); 
     }
   }, [db]);
@@ -492,7 +534,7 @@ const UserVerificationPanel = ({ db }) => {
         if (!db) return;
 
         // Query for users whose role is explicitly 'pending'
-        const q = query(collectionGroup(db, 'profiles'), where('role', '==', 'pending'));
+        const q = query(collectionGroup(db, 'profiles'), where('role', 'in', ['pending', 'submitted']));
 
         const unsubscribe = onSnapshot(q, 
             (snapshot) => {
@@ -502,8 +544,8 @@ const UserVerificationPanel = ({ db }) => {
                     ...doc.data(),
                     docId: doc.id
                 }));
-                // Filter out profiles without block/room (those who haven't submitted the form yet)
-                const submittedUsers = usersList.filter(u => u.tempBlock && u.tempRoom);
+                // Filter out profiles who haven't submitted the form yet AND are not verified.
+                const submittedUsers = usersList.filter(u => u.tempBlock && u.tempRoom && u.role !== 'student');
                 
                 // Sort by creation time, oldest first
                 submittedUsers.sort((a, b) => 
@@ -526,18 +568,8 @@ const UserVerificationPanel = ({ db }) => {
 
     const verifyUser = useCallback(async (user) => {
         try {
-            // Path to the specific userProfile document for this user
-            const profileDocRef = getUserProfileDoc(db, user.userId);
-
-            await updateDoc(profileDocRef, {
-                role: 'student', // Grant access
-                block: user.tempBlock,
-                roomNumber: user.tempRoom,
-                verifiedAt: serverTimestamp(),
-                tempBlock: null, // Clear temp fields
-                tempRoom: null, // Clear temp fields
-                status: 'verified' // Mark status
-            });
+            // Calls the centralized API function
+            await approveUserAccess(db, user);
 
             // Optimistically remove user from the local list
             setPendingUsers(prev => prev.filter(u => u.userId !== user.userId));
@@ -843,8 +875,21 @@ const App = () => {
 
           if (profileSnap.exists()) {
             const profile = profileSnap.data();
-            setUserProfile(profile);
-            setCurrentPage(profile.role === 'caretaker' ? 'dashboard' : 'report');
+            
+            // --- FIX: Ensure data is clean and defined before setting state ---
+            const cleanProfile = {
+                userId: uid,
+                role: profile.role || 'pending',
+                email: profile.email || getAuth(firestore.app).currentUser?.email || 'N/A',
+                block: profile.block || '',
+                roomNumber: profile.roomNumber || '',
+                tempBlock: profile.tempBlock || '',
+                tempRoom: profile.tempRoom || '',
+                createdAt: profile.createdAt,
+            };
+            
+            setUserProfile(cleanProfile);
+            setCurrentPage(cleanProfile.role === 'caretaker' ? 'dashboard' : 'report');
           } else {
             // User profile NOT FOUND -> create PENDING profile
             const pendingProfile = {
@@ -952,7 +997,7 @@ const App = () => {
         if (currentPage === 'verify') {
             return <UserVerificationPanel db={db} />;
         }
-        if (currentPage === 'dashboard' || currentPage.startsWith('block-') || currentPage === 'urgent') {
+        if (currentPage === 'dashboard' || currentPage.startsWith('block-') || currentPage.startsWith('block-') || currentPage === 'urgent') {
           const filterBlock = currentPage.startsWith('block-') ? currentPage.split('-')[1] : null;
           const filterUrgent = currentPage === 'urgent';
           return <CaretakerDashboard db={db} appId={appId} filterBlock={filterBlock} filterUrgent={filterUrgent} />;
