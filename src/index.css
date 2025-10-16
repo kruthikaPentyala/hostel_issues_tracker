@@ -1,21 +1,27 @@
 /* -------------------------------------------------------------------------- */
-/* 1. BASE STYLES AND LAYOUT                                                  */
+/* 1. BASE STYLES AND UTILITIES (Equivalent of CSS Reset and Variables)       */
 /* -------------------------------------------------------------------------- */
-:root {
-    --color-primary: #4f46e5; /* Indigo-600 */
-    --color-primary-dark: #3730a3; /* Indigo-800 */
-    --color-secondary: #fcd34d; /* Yellow-300 */
-    --color-success: #10b981; /* Green-500 */
-    --color-danger: #ef4444; /* Red-500 */
-    --color-warning: #f97316; /* Orange-600 */
-    --color-pending: #f59e0b; /* Yellow-600 for verification */
-    --color-urgent: #ec4899; /* Pink-600 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
-    --bg-light: #f9fafb;
+:root {
+    /* Color Palette */
+    --color-primary: #4f46e5;   /* Indigo-600 */
+    --color-primary-dark: #3730a3; /* Indigo-800 */
+    --color-success: #10b981;   /* Green-500 */
+    --color-danger: #ef4444;    /* Red-500 */
+    --color-pending: #f59e0b;   /* Amber-600 for verification */
+    --color-urgent: #ec4899;    /* Pink-600 */
+
+    /* Backgrounds & Surfaces */
+    --bg-light: #f9fafb;        /* Gray-50 */
     --bg-card: #ffffff;
+    
+    /* Dimensions */
+    --radius: 0.75rem;          /* 12px */
+    
+    /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --radius: 0.75rem; /* 12px */
 
     font-family: 'Inter', sans-serif;
 }
@@ -29,14 +35,13 @@ body {
 
 .app-container {
     min-height: 100vh;
-    background-color: var(--bg-light);
 }
 
 .main-content {
-    max-width: 1280px; /* Equivalent to max-w-7xl */
+    max-width: 1280px; 
     margin-left: auto;
     margin-right: auto;
-    padding: 2.5rem 1rem; /* py-10 px-4 */
+    padding: 2.5rem 1rem;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -75,14 +80,6 @@ body {
     border-radius: 9999px;
     font-size: 0.875rem;
     font-weight: 500;
-    display: none;
-}
-
-/* Show status label on larger screens */
-@media (min-width: 640px) { 
-    .user-status {
-        display: block;
-    }
 }
 
 .btn-signout {
@@ -95,6 +92,7 @@ body {
     transition: background-color 0.15s;
     box-shadow: var(--shadow-sm);
     border: none;
+    cursor: pointer;
 }
 
 .btn-signout:hover {
@@ -126,7 +124,7 @@ body {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
     font-weight: 700;
-    border-radius: var(--radius);
+    border-radius: 0.75rem; /* var(--radius) */
     transition: all 0.2s;
     white-space: nowrap;
     cursor: pointer;
@@ -150,7 +148,7 @@ body {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 3. FORM AND CARD STYLES                                                    */
+/* 3. FORM STYLES (Reporter and Auth)                                         */
 /* -------------------------------------------------------------------------- */
 
 .card {
@@ -296,17 +294,17 @@ body {
     gap: 1.5rem;
 }
 
-@media (min-width: 768px) { /* md breakpoint */
+@media (min-width: 768px) { 
     .issue-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
-@media (min-width: 1024px) { /* lg breakpoint */
+@media (min-width: 1024px) { 
     .issue-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
-@media (min-width: 1280px) { /* xl breakpoint */
+@media (min-width: 1280px) { 
     .issue-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -393,9 +391,11 @@ body {
     font-style: italic;
     flex-grow: 1;
     overflow: hidden;
+    /* --- Line Clamping for Multi-line text --- */
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    line-clamp: 3; /* Standard property */
 }
 
 .issue-reporter-tags {
@@ -566,6 +566,14 @@ body {
     transition: all 0.2s;
     border: none;
     cursor: pointer;
+}
+
+.btn-submit-details:hover {
+    background-color: #4338ca;
+}
+.btn-submit-details:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -55,63 +55,63 @@ const getIssuesCollectionRef = (db) =>
 // --- 1. Issue Card Component (Used by Caretaker Dashboard) ---
 const IssueCard = ({ issue, updateStatus }) => {
   const statusClasses = {
-    New: 'bg-red-50 text-red-700 border-red-400',
-    'In Progress': 'bg-yellow-50 text-yellow-700 border-yellow-400',
-    Resolved: 'bg-green-50 text-green-700 border-green-400',
+    New: 'status-new',
+    'In Progress': 'status-in-progress',
+    Resolved: 'status-resolved',
   };
 
-  const urgencyClass = issue.isUrgent ? 'bg-pink-600 text-white font-bold shadow-md' : 'bg-gray-100 text-gray-700';
+  const urgencyClass = issue.isUrgent ? 'tag-urgent' : '';
   const createdAt = issue.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-indigo-400/50 flex flex-col h-full transform hover:scale-[1.01] transition duration-300">
-      <div className="flex justify-between items-center mb-3 border-b pb-2">
-        <span className={`px-3 py-1 text-xs rounded-full ${urgencyClass} shadow-sm`}>
+    <div className="issue-card">
+      <div className="issue-card-header">
+        <span className={`issue-status-tag ${urgencyClass}`}>
           {issue.isUrgent ? '⚡ URGENT PRIORITY' : 'Standard'}
         </span>
-        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusClasses[issue.status]}`}>
+        <span className={`issue-status-tag ${statusClasses[issue.status]}`}>
           {issue.status}
         </span>
       </div>
 
-      <div className='flex items-center space-x-3 mb-3'>
-        <div className='flex-shrink-0 text-xl font-bold text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full shadow-inner'>
+      <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem'}}>
+        <div className='issue-location'>
             {issue.block}-{issue.floor}F
         </div>
-        <h3 className="text-lg font-extrabold text-gray-800 flex-grow">
+        <h3 className="issue-category-title">
           {issue.category} Issue
         </h3>
       </div>
       
-      <p className="text-sm text-gray-600 mb-4 flex-grow italic bg-gray-50 p-3 rounded-lg border line-clamp-3">
+      <p className="issue-description">
         {issue.description}
       </p>
 
-      <div className="text-xs text-gray-500 mb-4 pt-2 border-t">
-        Reported on: <span className='font-semibold'>{createdAt}</span>
+      <div style={{fontSize: '0.75rem', color: '#6b7280', marginBottom: '1rem', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb'}}>
+        Reported on: <span style={{fontWeight: '600'}}>{createdAt}</span>
       </div>
 
-      <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
-        <span className="font-semibold text-gray-700">
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem'}}>
+        <span style={{fontWeight: '600', color: '#374151'}}>
           Rooms Tagged:
         </span>
-        <span className="flex flex-wrap justify-end gap-1">
+        <span className="issue-reporter-tags">
           {issue.reporters.slice(0, 4).map((r, index) => (
-            <span key={index} className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md text-xs font-medium border border-indigo-200">
+            <span key={index} className="reporter-tag">
               {r.room}
             </span>
           ))}
           {issue.reporters.length > 4 && (
-            <span className="text-xs text-gray-500 py-0.5 ml-1">+{issue.reporters.length - 4}</span>
+            <span style={{fontSize: '0.75rem', color: '#6b7280', paddingLeft: '0.25rem'}}>+{issue.reporters.length - 4}</span>
           )}
         </span>
       </div>
 
-      <div className="mt-auto flex space-x-2 pt-3 border-t">
+      <div className="issue-actions">
         {issue.status !== 'Resolved' && (
           <button
             onClick={() => updateStatus(issue.id, 'In Progress')}
-            className="flex-1 py-2 text-sm font-semibold rounded-lg text-white bg-yellow-600 hover:bg-yellow-700 transition duration-150 shadow-md"
+            className="btn-action btn-start-work"
             disabled={issue.status === 'In Progress'}
           >
             {issue.status === 'In Progress' ? 'In Progress' : 'Start Work'}
@@ -120,7 +120,7 @@ const IssueCard = ({ issue, updateStatus }) => {
         {(issue.status === 'New' || issue.status === 'In Progress') && (
           <button
             onClick={() => updateStatus(issue.id, 'Resolved')}
-            className="flex-1 py-2 text-sm font-semibold rounded-lg text-white bg-green-600 hover:bg-green-700 transition duration-150 shadow-md"
+            className="btn-action btn-mark-resolved"
           >
             Mark Resolved
           </button>
@@ -199,24 +199,26 @@ const CaretakerDashboard = ({ db, appId, filterBlock, filterUrgent }) => {
   if (loading) return <LoadingSpinner message="Loading issues..." />;
   if (error) return <ErrorMessage message={error} />;
 
+  const titleClass = filterUrgent ? 'dashboard-title urgent' : 'dashboard-title';
+
   return (
-    <div className="space-y-8">
-      <h2 className={`text-4xl font-extrabold ${filterUrgent ? 'text-pink-700' : 'text-gray-900'} border-b-4 ${filterUrgent ? 'border-pink-300' : 'border-indigo-200'} pb-3`}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
+      <h2 className={titleClass}>
         {issueTitle} 
-        <span className="text-indigo-600 ml-3 bg-indigo-100 px-3 py-1 rounded-full text-2xl">({issues.length})</span>
+        <span style={{color: '#4f46e5', marginLeft: '0.75rem', backgroundColor: '#e0e7ff', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '1.5rem'}}>({issues.length})</span>
       </h2>
       
       {issues.length === 0 ? (
-        <div className="text-center p-12 bg-white rounded-2xl shadow-inner border border-dashed border-green-300">
-          <p className="text-2xl text-green-600 font-bold">
+        <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '1rem', boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.06)'}}>
+          <p style={{fontSize: '1.5rem', color: '#10b981', fontWeight: '700'}}>
             🎉 All Clear! 
           </p>
-          <p className="text-lg text-gray-500 mt-2">
+          <p style={{fontSize: '1.125rem', color: '#6b7280', marginTop: '0.5rem'}}>
             No active issues found {filterBlock ? `for Block ${filterBlock}` : 'across all blocks'}.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="issue-grid">
           {issues.map(issue => (
             <IssueCard key={issue.id} issue={issue} updateStatus={updateStatus} />
           ))}
@@ -315,29 +317,29 @@ const StudentReporter = ({ db, userProfile, appId }) => {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-2xl border-t-4 border-indigo-600/70">
-      <h2 className="text-3xl font-extrabold text-indigo-700 mb-6 border-b pb-3">Report a New Issue</h2>
+    <div className="card" style={{maxWidth: '48rem', margin: 'auto'}}>
+      <h2 className="form-title">Report a New Issue</h2>
       
-      <p className="mb-6 text-gray-700 bg-indigo-50 p-4 rounded-xl border border-indigo-200 shadow-inner font-medium">
+      <p className="message-box success" style={{marginBottom: '1.5rem'}}>
         Reporting from **Room {roomNumber}** in **Block {block}**. We consolidate identical reports automatically.
       </p>
 
       {message && (
-        <div className={`p-4 mb-6 rounded-xl text-sm font-semibold ${message.startsWith('✅') ? 'bg-green-100 text-green-800 border border-green-400' : message.startsWith('⚠️') ? 'bg-yellow-100 text-yellow-800 border border-yellow-400' : 'bg-red-100 text-red-800 border border-red-400'}`}>
+        <div className={`message-box ${message.startsWith('✅') ? 'success' : message.startsWith('⚠️') ? 'warning' : 'error'}`}>
           {message}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
         {/* Floor and Category Selection */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="form-field-group">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Select Floor</label>
+            <label className="form-label">Select Floor</label>
             <select
               value={floor}
               onChange={(e) => setFloor(Number(e.target.value))}
               required
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+              className="form-select"
             >
               {FLOORS.map(f => (
                 <option key={f} value={f}>Floor {f}</option>
@@ -345,12 +347,12 @@ const StudentReporter = ({ db, userProfile, appId }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Main Issue Category</label>
+            <label className="form-label">Main Issue Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+              className="form-select"
             >
               {ISSUE_CATEGORIES.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -360,30 +362,30 @@ const StudentReporter = ({ db, userProfile, appId }) => {
         </div>
 
         {/* Urgency Toggle */}
-        <div className="flex items-center justify-between p-4 bg-pink-50 rounded-xl border border-pink-200 shadow-md">
-          <label htmlFor="urgency-toggle" className="text-base font-bold text-pink-700 flex items-center space-x-2">
+        <div className="urgent-toggle-box">
+          <label htmlFor="urgency-toggle" className="urgent-label">
             <span>⚡ Immediate Urgency?</span>
-            <span className="text-xs font-normal text-gray-500">(Major incident, power cut, serious leak)</span>
+            <span style={{fontSize: '0.75rem', fontWeight: '400', color: '#6b7280'}}>(Major incident, power cut, serious leak)</span>
           </label>
           <input
             id="urgency-toggle"
             type="checkbox"
             checked={isUrgent}
             onChange={(e) => setIsUrgent(e.target.checked)}
-            className="w-6 h-6 text-pink-600 border-pink-300 rounded-md focus:ring-pink-500 cursor-pointer shadow-sm"
+            style={{width: '1.5rem', height: '1.5rem', cursor: 'pointer'}}
           />
         </div>
         
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Detailed Description</label>
+          <label htmlFor="description" className="form-label">Detailed Description</label>
           <textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows="5"
             required
-            className="w-full p-4 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 resize-none transition duration-150"
+            className="form-textarea"
             placeholder="Please describe the issue clearly and where exactly it is located."
           ></textarea>
         </div>
@@ -391,13 +393,13 @@ const StudentReporter = ({ db, userProfile, appId }) => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-4 px-4 rounded-xl shadow-lg text-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition duration-200 disabled:opacity-50 flex items-center justify-center space-x-2 transform hover:scale-[1.005]"
+          className="btn-primary"
         >
           {isLoading ? (
-            <>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
               <LoadingSpinner size="h-5 w-5 border-2" />
               <span>Submitting Report...</span>
-            </>
+            </div>
           ) : (
             <span>Post Issue</span>
           )}
@@ -442,32 +444,35 @@ const ContactsPage = ({ db, appId }) => {
     if (error) return <ErrorMessage message={error} />;
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-8 border-b-4 border-indigo-200 pb-3">
+        <div className="max-w-4xl mx-auto" style={{maxWidth: '64rem', margin: 'auto'}}>
+            <h2 className="dashboard-title">
                 Emergency & Essential Utility Contacts
             </h2>
             
             {contacts.length === 0 ? (
-                <div className="p-8 bg-yellow-50 rounded-xl border border-yellow-300 shadow-inner">
-                    <p className="text-lg text-yellow-800">
+                <div style={{textAlign: 'center', padding: '2rem', backgroundColor: '#fffbeb', borderRadius: '1rem', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)'}}>
+                    <p style={{fontSize: '1.125rem', color: '#92400e'}}>
                         ⚠️ Contact list is empty. Please ask an administrator to populate the list in Firestore.
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="issue-grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem'}}>
                     {contacts.map((contact, index) => (
-                        <div key={index} className="flex flex-col p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition duration-200 border-l-4 border-indigo-400">
+                        <div key={index} className="issue-card" style={{borderLeft: '4px solid var(--color-primary)', borderTop: 'none', padding: '1.5rem'}}>
                             <h3 className="text-xl font-bold text-indigo-700 border-b pb-1">{contact.service}</h3>
                             <p className="text-sm text-gray-500 mt-2 flex-grow">{contact.desc || 'General contact information.'}</p>
                             
                             <a 
                                 href={`tel:${contact.phone}`} 
-                                className="mt-4 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-150 flex items-center justify-center space-x-2 text-lg transform hover:scale-[1.01]"
+                                className="btn-action" 
+                                style={{backgroundColor: 'var(--color-success)', marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '1rem'}}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 3.116a1 1 0 01-.29 1.054L4.854 9.854a1 1 0 000 1.414l5 5a1 1 0 001.414 0l2.853-2.853a1 1 0 011.054-.29l3.116.74A1 1 0 0118 16.847V19a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-.74-3.116a1 1 0 01.29-1.054l3.116.74a1 1 0 01.986.836H17a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-.74-3.116a1 1 0 01.29-1.054L14.854 9.854a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 0L4.854 9.854a1 1 0 01-1.054.29l-3.116-.74A1 1 0 012 3z" />
-                                </svg>
-                                <span>{contact.phone}</span>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" style={{height: '1.25rem', width: '1.25rem'}} viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 3.116a1 1 0 01-.29 1.054L4.854 9.854a1 1 0 000 1.414l5 5a1 1 0 001.414 0l2.853-2.853a1 1 0 011.054-.29l3.116.74A1 1 0 0118 16.847V19a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-.74-3.116a1 1 0 01.29-1.054l3.116.74a1 1 0 01.986.836H17a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-.74-3.116a1 1 0 01.29-1.054L14.854 9.854a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 0L4.854 9.854a1 1 0 01-1.054.29l-3.116-.74A1 1 0 012 3z" />
+                                    </svg>
+                                    <span>{contact.phone}</span>
+                                </div>
                             </a>
                         </div>
                     ))}
@@ -492,7 +497,8 @@ const UserVerificationPanel = ({ db }) => {
         const unsubscribe = onSnapshot(q, 
             (snapshot) => {
                 const usersList = snapshot.docs.map(doc => ({
-                    userId: doc.ref.parent.parent.id, // Extract UID from document path
+                    // We must find the user's UID which is the parent document ID of 'profiles' parent's parent
+                    userId: doc.ref.parent.parent.id, 
                     ...doc.data(),
                     docId: doc.id
                 }));
@@ -547,43 +553,41 @@ const UserVerificationPanel = ({ db }) => {
     if (error) return <ErrorMessage message={error} />;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h2 className="text-3xl font-extrabold text-indigo-700 border-b-4 border-yellow-300 pb-3">
-                User Verification <span className='text-yellow-600 ml-2'>({pendingUsers.length} Pending)</span>
+        <div className="max-w-4xl mx-auto space-y-6" style={{maxWidth: '64rem', margin: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+            <h2 className="verification-header">
+                User Verification <span style={{color: '#f59e0b', marginLeft: '0.5rem'}}>({pendingUsers.length} Pending)</span>
             </h2>
-            <p className='text-gray-600 bg-yellow-50 p-4 rounded-xl border border-yellow-300'>
+            <p className='message-box warning' style={{marginBottom: '1.5rem'}}>
                 Approve users who have submitted their Block and Room details for verification.
             </p>
 
             {pendingUsers.length === 0 ? (
-                <div className="text-center p-12 bg-white rounded-2xl shadow-inner border border-dashed border-green-300">
-                    <p className="text-2xl text-green-600 font-bold">
+                <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '1rem', boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.06)'}}>
+                    <p style={{fontSize: '1.5rem', color: '#10b981', fontWeight: '700'}}>
                         ✅ No Users Pending Verification
                     </p>
-                    <p className="text-lg text-gray-500 mt-2">
+                    <p style={{fontSize: '1.125rem', color: '#6b7280', marginTop: '0.5rem'}}>
                         All users have been verified or have not submitted their details yet.
                     </p>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                     {pendingUsers.map(user => (
-                        <div key={user.userId} className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-yellow-500 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 md:space-x-4">
-                            <div className='flex-grow'>
-                                <p className="text-lg font-bold text-gray-800">{user.email}</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Requested: <span className='font-semibold'>{user.tempBlock}-{user.tempRoom}</span>
+                        <div key={user.userId} className="verification-user-card">
+                            <div className='user-info'>
+                                <p className="user-email">{user.email}</p>
+                                <p className="user-requested-details">
+                                    Requested: <span style={{fontWeight: '700'}}>{user.tempBlock}-{user.tempRoom}</span>
                                 </p>
-                                <p className='text-xs text-gray-400 mt-1'>Registered: {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}</p>
+                                <p style={{fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem'}}>Registered: {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}</p>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto items-center">
-                                <button
-                                    onClick={() => verifyUser(user)}
-                                    className="py-3 px-6 rounded-xl shadow-md text-white font-bold bg-green-600 hover:bg-green-700 transition duration-150 w-full sm:w-auto"
-                                >
-                                    Approve Access
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => verifyUser(user)}
+                                className="btn-approve"
+                            >
+                                Approve Access
+                            </button>
                         </div>
                     ))}
                 </div>
@@ -630,40 +634,40 @@ const AuthPage = ({ auth, setAppError }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm bg-white p-8 rounded-3xl shadow-2xl border-t-8 border-indigo-600">
-        <h2 className="text-4xl font-extrabold text-center text-indigo-700 mb-8">
+    <div className="auth-container">
+      <div className="auth-card">
+        <h2 className="auth-title">
           {isRegistering ? 'Register Access' : 'Hostel Sign In'}
         </h2>
 
         {authError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl relative mb-6" role="alert">
-            <span className="block sm:inline">{authError}</span>
+          <div className="message-box error" style={{marginBottom: '1.5rem'}}>
+            <span className="block">{authError}</span>
           </div>
         )}
 
-        <form onSubmit={handleAuth} className="space-y-5">
+        <form onSubmit={handleAuth} style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700">Email Address</label>
+            <label htmlFor="email" className="auth-form-label">Email Address</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="mt-1 w-full p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+              className="auth-input"
               placeholder="e.g., student@hostel.edu"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-700">Password</label>
+            <label htmlFor="password" className="auth-form-label">Password</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="mt-1 w-full p-3 border border-gray-300 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+              className="auth-input"
               placeholder="Minimum 6 characters"
             />
           </div>
@@ -671,17 +675,16 @@ const AuthPage = ({ auth, setAppError }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 px-4 rounded-xl shadow-lg text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 disabled:opacity-50 transform hover:scale-[1.005]"
+            className="auth-btn-submit"
           >
             {isSubmitting ? 'Processing...' : (isRegistering ? 'Register & Request Access' : 'Sign In')}
           </button>
         </form>
 
-        <div className="mt-7 text-center">
+        <div className="auth-switch-button">
           <button
             type="button"
             onClick={() => { setIsRegistering(!isRegistering); setAuthError(null); }}
-            className="text-sm text-indigo-600 hover:text-indigo-500 font-medium transition duration-150"
           >
             {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register Here'}
           </button>
@@ -726,28 +729,28 @@ const PendingVerification = ({ db, userProfile, handleSignOut }) => {
     }, [db, userProfile, block, roomNumber]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-            <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-2xl border-l-8 border-yellow-500">
-                <h2 className="text-3xl font-bold text-yellow-700 mb-4">Access Pending Verification</h2>
+        <div className="pending-page-container">
+            <div className="pending-card">
+                <h2 className="pending-title">Access Pending Verification</h2>
                 <p className="text-lg text-gray-700 mb-6">
                     To finalize your access, please tell us your location details below.
                 </p>
                 
                 {message && (
-                    <div className={`p-4 mb-6 rounded-xl text-sm font-semibold ${message.startsWith('✅') ? 'bg-green-100 text-green-800 border border-green-400' : 'bg-red-100 text-red-800 border border-red-400'}`}>
+                    <div className={`message-box ${message.startsWith('✅') ? 'success' : 'error'}`} style={{marginBottom: '1.5rem'}}>
                         {message}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmitDetails} className='space-y-4'>
-                    <div className='grid grid-cols-2 gap-4'>
+                <form onSubmit={handleSubmitDetails} style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+                    <div className='form-field-group'>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">Select Block</label>
+                            <label className="form-label">Select Block</label>
                             <select
                                 value={block}
                                 onChange={(e) => setBlock(e.target.value)}
                                 required
-                                className="w-full p-3 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                                className="form-select"
                             >
                                 {BLOCKS.map(b => (
                                     <option key={b} value={b}>Block {b}</option>
@@ -755,14 +758,14 @@ const PendingVerification = ({ db, userProfile, handleSignOut }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">Room Number</label>
+                            <label className="form-label">Room Number</label>
                             <input
                                 type="text"
                                 value={roomNumber}
                                 onChange={(e) => setRoomNumber(e.target.value)}
                                 required
                                 placeholder="e.g., 301, G15"
-                                className="w-full p-3 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                                className="form-input"
                             />
                         </div>
                     </div>
@@ -770,16 +773,16 @@ const PendingVerification = ({ db, userProfile, handleSignOut }) => {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full py-3 px-4 rounded-xl shadow-md text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 disabled:opacity-50 flex items-center justify-center space-x-2 transform hover:scale-[1.005]"
+                        className="btn-submit-details"
                     >
                         {isLoading ? <LoadingSpinner size="h-5 w-5 border-2" /> : "Submit for Approval"}
                     </button>
                 </form>
 
-                <div className="flex justify-end mt-6 border-t pt-4">
+                <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb'}}>
                   <button 
                     onClick={handleSignOut}
-                    className="py-2 px-4 rounded-xl text-white bg-red-500 hover:bg-red-600 transition duration-150 shadow-md font-medium"
+                    className="btn-signout"
                   >
                     Sign Out
                   </button>
@@ -791,16 +794,16 @@ const PendingVerification = ({ db, userProfile, handleSignOut }) => {
 
 // --- 8. Utility Components (Spinner and Error) ---
 const LoadingSpinner = ({ message = "Loading...", size = "h-8 w-8 border-4" }) => (
-  <div className="flex flex-col items-center justify-center p-8 text-indigo-600">
-    <div className={`border-indigo-600 border-t-transparent rounded-full animate-spin ${size}`}></div>
-    <span className="mt-3 text-lg font-medium">{message}</span>
+  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', color: '#4f46e5'}}>
+    <div className={`border-indigo-600 border-t-transparent rounded-full animate-spin ${size}`} style={{width: size.split(' ')[1], height: size.split(' ')[1], borderWidth: size.split(' ')[2], borderColor: '#4f46e5', borderTopColor: 'transparent'}}></div>
+    <span style={{marginTop: '0.75rem', fontSize: '1.125rem', fontWeight: '500'}}>{message}</span>
   </div>
 );
 
 const ErrorMessage = ({ message }) => (
-  <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl shadow-md">
-    <h3 className="font-bold text-lg">Application Error</h3>
-    <p className="mt-1 text-sm">{message}</p>
+  <div className="message-box error">
+    <h3 style={{fontWeight: '700', fontSize: '1.125rem'}}>Application Error</h3>
+    <p style={{marginTop: '0.25rem', fontSize: '0.875rem'}}>{message}</p>
   </div>
 );
 
@@ -962,7 +965,7 @@ const App = () => {
     }
     
     // Default fallback 
-    return <div className="p-8 text-center text-gray-500">Select a navigation tab.</div>;
+    return <div style={{padding: '2rem', textAlign: 'center', color: '#6b7280'}}>Select a navigation tab.</div>;
   };
 
   const statusLabel = isCaretaker ? `Caretaker (${userProfile.email})` : 
@@ -970,17 +973,17 @@ const App = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <header className="bg-indigo-700 text-white shadow-xl sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold tracking-wide">Hostel Issue Tracker</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm bg-indigo-800 px-3 py-1 rounded-full hidden sm:block font-medium">
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-content">
+          <h1 className="header-title">Hostel Issue Tracker</h1>
+          <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+            <span className="user-status">
               {statusLabel}
             </span>
             <button 
               onClick={handleSignOut} 
-              className="text-sm px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 transition duration-150 shadow-md font-medium"
+              className="btn-signout"
             >
               Sign Out
             </button>
@@ -989,27 +992,21 @@ const App = () => {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="bg-white shadow-md sticky top-[56px] z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-2 sm:space-x-4 overflow-x-auto py-3">
+      <nav className="app-nav">
+        <div className="nav-list">
             {getNavItems(isCaretaker).map((item) => (
               <button
                 key={item.key}
                 onClick={() => setCurrentPage(item.key)}
-                className={`py-2 px-4 text-sm font-bold rounded-xl transition-colors duration-200 whitespace-nowrap shadow-sm transform hover:scale-[1.03] ${
-                  currentPage === item.key
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-700'
-                }`}
+                className={`nav-button ${currentPage === item.key ? 'active' : ''}`}
               >
                 {item.label}
               </button>
             ))}
-          </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="main-content">
         {renderContent()}
       </main>
     </div>
