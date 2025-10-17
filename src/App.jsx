@@ -7,7 +7,7 @@ import {
 import {
   getFirestore, collection, doc, setDoc, getDoc, updateDoc,
   query, where, onSnapshot, runTransaction, 
-  serverTimestamp, collectionGroup
+  serverTimestamp, collectionGroup, getDocs
 } from 'firebase/firestore';
 
 
@@ -35,13 +35,14 @@ const ISSUE_CATEGORIES = [
 const BLOCKS = ['A', 'B', 'C', 'D'];
 const FLOORS = [1, 2, 3, 4];
 
+
 // Utility function to get the public collection path
 const getPublicCollectionRef = (db, collectionName) => 
-  collection(db, `/artifacts/${appId}/public/data/${collectionName}`);
+  collection(db, `artifacts/${appId}/public/data/${collectionName}`);
 
 // Utility function to get the private user profile path
 const getUserProfileDoc = (db, userId) =>
-  doc(db, `/artifacts/${appId}/users/${userId}/profiles/userProfile`);
+  doc(db, `artifacts/${appId}/users/${userId}/profiles/userProfile`);
 
 // Utility function to get the issues collection path
 const getIssuesCollectionRef = (db) => 
@@ -74,21 +75,42 @@ const updateIssueStatus = async (db, issueId, newStatus) => {
  * @param {object} user 
  */
 const approveUserAccess = async (db, user) => {
-    try {
-        const profileDocRef = getUserProfileDoc(db, user.userId);
-        await updateDoc(profileDocRef, {
-            role: 'user', 
-            block: user.tempBlock,
-            roomNumber: user.tempRoom,
-            verifiedAt: serverTimestamp(),
-            tempBlock: null, 
-            tempRoom: null, 
-        });
-    } catch (e) {
-        console.error("Verification error:", e);
-        throw new Error("Failed to verify user.");
+  try {
+    if (!db) {
+      console.error("Database reference is missing.");
+      throw new Error("Database reference is missing.");
     }
+
+    if (!user || !user.userId) {
+      console.error("Invalid user object:", user);
+      throw new Error("Invalid user object passed to approveUserAccess.");
+    }
+
+    const profileDocRef = getUserProfileDoc(db, user.userId);
+
+    console.log("Profile Doc Ref:", profileDocRef); // 👀 check what this prints
+    console.log("Doc Path:", profileDocRef?.path);
+
+    if (!profileDocRef || !profileDocRef.path) {
+      throw new Error("Invalid Firestore document reference.");
+    }
+
+    await updateDoc(profileDocRef, {
+      role: 'student',
+      block: user.tempBlock,
+      roomNumber: user.tempRoom,
+      verifiedAt: serverTimestamp(),
+      tempBlock: null,
+      tempRoom: null,
+    });
+
+    console.log("User verified successfully!");
+  } catch (e) {
+    console.error("Verification error:", e);
+    throw new Error("Failed to verify user.");
+  }
 };
+
 
 
 // =================================================================
@@ -283,7 +305,7 @@ const StudentReporter = ({ db, userProfile, appId }) => {
   const block = userProfile.block;
   const roomNumber = userProfile.roomNumber;
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
     setIsLoading(true);
@@ -293,70 +315,85 @@ const StudentReporter = ({ db, userProfile, appId }) => {
         setIsLoading(false);
         return;
     }
-    
-    // Create the consolidation key based on block, floor, and category
-    const consolidationKey = `${block}_${floor}_${category.replace(/\s/g, '_').toUpperCase()}`;
-    const issueRef = getIssuesCollectionRef(db);
-    
-    try {
-      await runTransaction(db, async (transaction) => {
-        // Query for existing active issues with the same key
-        const existingQuery = query(
-          issueRef, 
-          where('consolidationKey', '==', consolidationKey),
-          where('status', 'in', ['New', 'In Progress']) 
-        );
-        
-        const existingSnapshot = await transaction.get(existingQuery);
-        const reporterData = { room: roomNumber, userId: userProfile.userId };
 
-        if (!existingSnapshot.empty) {
-          // --- CONSOLIDATION LOGIC: Found existing task ---
-          const existingDoc = existingSnapshot.docs[0];
-          const existingIssueRef = doc(issueRef, existingDoc.id);
-          const existingReporters = existingDoc.data().reporters || [];
-          const alreadyReported = existingReporters.some(r => r.room === roomNumber);
-
-          if (!alreadyReported) {
-            transaction.update(existingIssueRef, {
-              reporters: [...existingReporters, reporterData],
-            });
-            setMessage(`✅ Successfully tagged existing issue. Your report is linked to ${existingDoc.data().reporters.length + 1} total rooms.`);
-          } else {
-            setMessage('⚠️ This exact issue has already been reported and tagged by your room. Thank you!');
-          }
-
-        } else {
-          // --- NEW ISSUE LOGIC: No existing active task found ---
-          const newIssue = {
-            block,
-            floor,
-            category,
-            description,
-            isUrgent,
-            status: 'New',
-            consolidationKey,
-            createdAt: serverTimestamp(),
-            reporters: [reporterData],
-          };
-          
-          const newDocRef = doc(issueRef);
-          transaction.set(newDocRef, newIssue);
-          setMessage('✅ New issue created successfully! The caretaker has been notified.');
-        }
-      });
-      
-      // Clear form after successful submission
-      setDescription('');
-      setIsUrgent(false);
-
-    } catch (e) {
-      console.error("Submission error:", e);
-      setMessage(`❌ Failed to submit issue: ${e.message}`);
-    } finally {
-      setIsLoading(false);
+    if (!floor || !category || !description) {
+        setMessage('❌ Please fill in all required fields.');
+        setIsLoading(false);
+        return;
     }
-  };
+
+    try {
+        const consolidationKey = `${block}_${floor}_${category}`;
+        const issuesRef = getIssuesCollectionRef(db);
+        const reporterData = { room: roomNumber, userId: userProfile.userId };
+        const timestamp = serverTimestamp();
+        
+        // --- 1. PRE-TRANSACTION CHECK: Find the ID of the existing issue (if any) ---
+        // This query runs outside the transaction just to find the target ID.
+        const existingQuery = query(
+            issuesRef,
+            where('consolidationKey', '==', consolidationKey),
+            where('status', 'in', ['New', 'In Progress']) 
+        );
+        const preCheckSnapshot = await getDocs(existingQuery);
+        const existingIssueId = preCheckSnapshot.empty ? null : preCheckSnapshot.docs[0].id;
+        
+        
+        await runTransaction(db, async (transaction) => {
+            if (existingIssueId) {
+                // --- CONSOLIDATE: Tag existing task using its known ID ---
+                const existingIssueRef = doc(issuesRef, existingIssueId);
+                
+                // CRUCIAL: Read the document again *inside* the transaction using the valid reference.
+                const existingDocSnapshot = await transaction.get(existingIssueRef);
+                
+                if (!existingDocSnapshot.exists) {
+                    throw new Error("Consolidation target disappeared during transaction.");
+                }
+                
+                const existingReporters = existingDocSnapshot.data().reporters || [];
+                const alreadyReported = existingReporters.some(r => r.room === roomNumber);
+
+                if (!alreadyReported) {
+                    transaction.update(existingIssueRef, {
+                        reporters: [...existingReporters, reporterData],
+                    });
+                    setMessage(`✅ Issue consolidated! Your room (${roomNumber}) is now linked to the existing task.`);
+                } else {
+                    setMessage('⚠️ You already reported this exact issue. We\'re on it!');
+                }
+            } else {
+                // --- CREATE: New Task ---
+                const newIssue = {
+                    block,
+                    floor: parseInt(floor),
+                    category,
+                    description,
+                    isUrgent,
+                    status: 'New',
+                    consolidationKey,
+                    createdAt: timestamp,
+                    reporters: [reporterData],
+                };
+                transaction.set(doc(issuesRef), newIssue);
+                setMessage('✅ New issue created successfully! The caretaker has been notified.');
+            }
+        });
+
+        // Clear form after successful transaction
+        if (message.startsWith('✅') || message.startsWith('⚠️')) {
+            setDescription('');
+            setIsUrgent(false);
+        }
+
+    } catch (error) {
+        console.error("Submission error:", error);
+        // Include specific error to help with debugging if it's not the transaction issue
+        setMessage(`❌ Submission failed: ${error.message}.`);
+    } finally {
+        setIsLoading(false);
+    }
+};
 
   return (
     <div className="card" style={{maxWidth: '48rem', margin: 'auto'}}>
