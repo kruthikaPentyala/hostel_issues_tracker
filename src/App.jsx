@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
-  onAuthStateChanged 
+  onAuthStateChanged ,sendPasswordResetEmail
 } from 'firebase/auth';
 import {
   getFirestore, collection, doc, setDoc, getDoc, updateDoc,
@@ -488,6 +488,74 @@ const handleSubmit = async (e) => {
   );
 };
 
+// --- 4. Student Issue Tracker Component (NEW FEATURE) ---
+const StudentIssueTracker = ({ db, userProfile }) => {
+    const [issues, setIssues] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const roomNumber = userProfile.roomNumber;
+
+    useEffect(() => {
+        if (!db || !roomNumber) return;
+
+        // Query for issues where the current room number is in the reporters array.
+        // The array-contains filter uses a Map, requiring an index on the 'reporters' field.
+        const issuesQuery = query(
+            getIssuesCollectionRef(db),
+            where('reporters', 'array-contains', { room: roomNumber, userId: userProfile.userId })
+        );
+
+        const unsubscribe = onSnapshot(issuesQuery, 
+            (snapshot) => {
+                const issuesList = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                // Sort to show newest first
+                issuesList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                setIssues(issuesList);
+                setLoading(false);
+            },
+            (e) => {
+                console.error("Error fetching student issues:", e);
+                setError("Error loading your reported issues. Check network/rules.");
+                setLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [db, roomNumber, userProfile.userId]);
+
+    if (loading) return <LoadingSpinner message={`Loading issues for Room ${roomNumber}...`} />;
+    if (error) return <ErrorMessage message={error} />;
+
+    return (
+        <div className="dashboard-container">
+            <h2 className="dashboard-title">
+                My Reported Issues <span className="issue-count">({issues.length})</span>
+            </h2>
+            
+            {issues.length === 0 ? (
+                <div className="empty-state warning">
+                    <p className="empty-state-title">
+                        No Issues Reported Yet
+                    </p>
+                    <p className="empty-state-text">
+                        Report a new issue using the "Report Issue" tab.
+                    </p>
+                </div>
+            ) : (
+                <div className="issue-grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'}}>
+                    {issues.map(issue => (
+                        // Pass updateStatus={null} so the card renders as a status viewer, not an action card
+                        <IssueCard key={issue.id} issue={issue} updateStatus={null} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // --- 4. Contacts Page Component ---
 const ContactsPage = ({ db, appId }) => {
@@ -702,6 +770,27 @@ const AuthPage = ({ auth, setAppError }) => {
     }
   };
 
+  // --- New Function: Password Reset ---
+const handlePasswordReset = async () => {
+    if (!email) {
+        setAuthError("Please enter your registered email address above.");
+        return;
+    }
+    setIsSubmitting(true);
+    setAuthError(null);
+
+    try {
+        await sendPasswordResetEmail(auth, email);
+        setAuthError("✅ Password reset link sent! Check your email (and spam folder) to proceed.");
+    } catch (error) {
+        console.error("Reset Error:", error);
+        // Using a general message for security (prevents leaking if the email is registered)
+        setAuthError("❌ Could not send reset link. Ensure the email is correct.");
+    } finally {
+        setIsSubmitting(false);
+    }
+};
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -757,6 +846,17 @@ const AuthPage = ({ auth, setAppError }) => {
           >
             {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register Here'}
           </button>
+
+          {!isRegistering && (
+              <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  style={{marginTop: '0.5rem', fontSize: '0.90rem', color: '#4f46e5'}}
+                  disabled={isSubmitting}
+              >
+                  Forgot Password?
+              </button>
+          )}
         </div>
       </div>
     </div>
@@ -1007,7 +1107,7 @@ const App = () => {
 
   // Navigation Logic
   const getNavItems = (isCaretaker) => {
-    let items = [{ key: 'report', label: 'Report Issue' }, { key: 'contacts', label: 'Contacts' }];
+    let items = [{ key: 'report', label: 'Report Issue' },{ key: 'my-issues', label: 'My Issues' }, { key: 'contacts', label: 'Contacts' }];
     if (isCaretaker) {
       items = [
         { key: 'dashboard', label: 'Dashboard' },
@@ -1021,13 +1121,20 @@ const App = () => {
   };
 
   const renderContent = () => {
-    if (userProfile.role === 'student' || userProfile.role === 'pending') {
-        // Students are always routed to the reporter page or the default content
-        if (currentPage === 'report' || currentPage === 'home') {
-            // Note: If profile is pending, it should never reach here, but this is a safety fallback.
-            return <StudentReporter db={db} userProfile={userProfile} appId={appId} />;
-        }
-    }
+  if (userProfile.role === 'student') {
+          // New Route for tracking reported issues
+          if (currentPage === 'my-issues') {
+              return <StudentIssueTracker db={db} userProfile={userProfile} />;
+          }
+          // Existing Route for reporting
+          if (currentPage === 'report') {
+              return <StudentReporter db={db} userProfile={userProfile} />;
+          }
+          // Fallback for students
+          if (currentPage === 'home' || currentPage !== 'contacts') {
+              return <StudentReporter db={db} userProfile={userProfile} />;
+          }
+      }
 
     // Caretaker Routes
     if (userProfile.role === 'caretaker') {
