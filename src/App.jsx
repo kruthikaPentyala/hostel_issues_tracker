@@ -33,7 +33,7 @@ const ISSUE_CATEGORIES = [
 
 // Available blocks and floors 
 const BLOCKS = ['A', 'B', 'C', 'D'];
-const FLOORS = [1, 2, 3, 4];
+const FLOORS = [0, 1, 2, 3, 4, 5];
 
 
 // Utility function to get the public collection path
@@ -557,8 +557,8 @@ const StudentIssueTracker = ({ db, userProfile }) => {
     );
 };
 
-// --- 4. Contacts Page Component ---
-const ContactsPage = ({ db, appId }) => {
+// --- 5. Contacts Page Component ---
+const ContactsPage = ({ db }) => {
     const [contacts, setContacts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -605,14 +605,13 @@ const ContactsPage = ({ db, appId }) => {
             ) : (
                 <div className="issue-grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem'}}>
                     {contacts.map((contact, index) => (
-                        <div key={index} className="issue-card" style={{borderLeft: '4px solid var(--color-primary)', borderTop: 'none', padding: '1.5rem'}}>
-                            <h3 className="text-xl font-bold text-indigo-700 border-b pb-1">{contact.service}</h3>
-                            <p className="text-sm text-gray-500 mt-2 flex-grow">{contact.desc || 'General contact information.'}</p>
+                        <div key={index} className="contact-card"> {/* Changed issue-card to contact-card for specific styling */}
+                            <h3 className="contact-title">{contact.service}</h3> {/* Changed class name */}
+                            <p className="contact-description">{contact.desc || 'General contact information.'}</p> {/* Changed class name */}
                             
                             <a 
                                 href={`tel:${contact.phone}`} 
-                                className="btn-action" 
-                                style={{backgroundColor: 'var(--color-success)', marginTop: '1rem', padding: '0.5rem 1rem', fontSize: '1rem'}}
+                                className="btn-call" // <--- CRITICAL FIX: USING THE NEW PURE CSS CLASS
                             >
                                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
                                     <svg xmlns="http://www.w3.org/2000/svg" style={{height: '1.25rem', width: '1.25rem'}} viewBox="0 0 20 20" fill="currentColor">

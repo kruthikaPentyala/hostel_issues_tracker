@@ -667,3 +667,34 @@ body {
 .auth-switch-button button:hover {
     color: #4338ca;
 }
+
+/* Find and replace the existing .btn-call styles in src/App.css */
+.btn-call {
+    /* Base Button Styles */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem; 
+    
+    /* Size and Padding Control: REDUCED HEIGHT/PADDING */
+    padding: 0.6rem 1rem; /* This reduces the vertical space (height) */
+    font-size: 1rem;
+    font-weight: 700;
+    
+    /* Color and Appearance */
+    background-color: var(--color-success);
+    color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.15s ease-in-out;
+    text-decoration: none; 
+    
+    /* Layout */
+    width: 100%; 
+    box-sizing: border-box; 
+    margin-top: 1rem;
+}
+
+.btn-call:hover {
+    background-color: #059669; 
+}
