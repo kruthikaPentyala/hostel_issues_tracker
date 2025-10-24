@@ -398,6 +398,17 @@ body {
     line-clamp: 3; /* Standard property */
 }
 
+.issue-reporters-summary {
+    display: flex; /* Forces children (label and tags) onto one line */
+    justify-content: space-between; /* Puts space between the label and the tags */
+    align-items: center; /* Vertically centers the text and the tag */
+    font-size: 0.875rem; /* text-sm */
+    color: #6b7280; /* text-gray-500 */
+    margin-bottom: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e5eeeb;
+}
+
 .issue-reporter-tags {
     display: flex;
     flex-wrap: wrap;

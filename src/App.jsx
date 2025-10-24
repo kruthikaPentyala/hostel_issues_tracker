@@ -117,7 +117,7 @@ const approveUserAccess = async (db, user) => {
 // -------------------- CORE COMPONENTS -----------------
 // =================================================================
 
-// --- 1. Issue Card Component (Used by Caretaker Dashboard) ---
+// --- 1. Issue Card Component (Used by Caretaker Dashboard and Student Tracker) ---
 const IssueCard = ({ issue, updateStatus }) => {
   const statusClasses = {
     New: 'status-new',
@@ -139,7 +139,7 @@ const IssueCard = ({ issue, updateStatus }) => {
         </span>
       </div>
 
-      <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem'}}>
+      <div className='issue-location-info'>
         <div className='issue-location'>
             {issue.block}-{issue.floor}F
         </div>
@@ -152,12 +152,12 @@ const IssueCard = ({ issue, updateStatus }) => {
         {issue.description}
       </p>
 
-      <div style={{fontSize: '0.75rem', color: '#6b7280', marginBottom: '1rem', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb'}}>
-        Reported on: <span style={{fontWeight: '600'}}>{createdAt}</span>
+      <div className="issue-timestamp">
+        Reported on: <span className='font-semibold'>{createdAt}</span>
       </div>
 
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem'}}>
-        <span style={{fontWeight: '600', color: '#374151'}}>
+      <div className="issue-reporters-summary">
+        <span className="font-semibold text-gray-700">
           Rooms Tagged:
         </span>
         <span className="issue-reporter-tags">
@@ -167,30 +167,43 @@ const IssueCard = ({ issue, updateStatus }) => {
             </span>
           ))}
           {issue.reporters.length > 4 && (
-            <span style={{fontSize: '0.75rem', color: '#6b7280', paddingLeft: '0.25rem'}}>+{issue.reporters.length - 4}</span>
+            <span className="text-xs text-gray-500 py-0.5 ml-1">+{issue.reporters.length - 4}</span>
           )}
         </span>
       </div>
 
-      <div className="issue-actions">
-        {issue.status !== 'Resolved' && (
-          <button
-            onClick={() => updateStatus(issue.id, 'In Progress')}
-            className="btn-action btn-start-work"
-            disabled={issue.status === 'In Progress'}
-          >
-            {issue.status === 'In Progress' ? 'In Progress' : 'Start Work'}
-          </button>
-        )}
-        {(issue.status === 'New' || issue.status === 'In Progress') && (
-          <button
-            onClick={() => updateStatus(issue.id, 'Resolved')}
-            className="btn-action btn-mark-resolved"
-          >
-            Mark Resolved
-          </button>
-        )}
-      </div>
+      {/* --- CRITICAL FIX: Conditionally display actions ONLY if updateStatus function is provided --- */}
+      {updateStatus && (
+        <div className="issue-actions">
+          {issue.status !== 'Resolved' && (
+            <button
+              onClick={() => updateStatus(issue.id, 'In Progress')}
+              className="btn-action btn-start-work"
+              disabled={issue.status === 'In Progress'}
+            >
+              {issue.status === 'In Progress' ? 'In Progress' : 'Start Work'}
+            </button>
+          )}
+          {(issue.status === 'New' || issue.status === 'In Progress') && (
+            <button
+              onClick={() => updateStatus(issue.id, 'Resolved')}
+              className="btn-action btn-mark-resolved"
+            >
+              Mark Resolved
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Student Status View: Show status label if updateStatus is NOT provided */}
+      {!updateStatus && (
+        <div className="status-label">
+            Current Status: 
+            <span className={`status-tag-large ${statusClasses[issue.status]}`}>
+                {issue.status}
+            </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -316,7 +329,7 @@ const handleSubmit = async (e) => {
         return;
     }
 
-    if (!floor || !category || !description) {
+    if (floor === undefined || floor === null || category === ''|| description === '') {
         setMessage('❌ Please fill in all required fields.');
         setIsLoading(false);
         return;
